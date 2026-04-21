@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Espelho Fiscal 2026 — Lei 15.270/2025</title>
+<style>
+:root{
+  --bg:#ffffff;--bg2:#f3f3ef;--bg-info:#e6f1fb;--bg-warn:#faeeda;--bg-danger:#fcebeb;--bg-ok:#eaf3de;
+  --tx:#1a1a1a;--tx2:#5f5e5a;--tx3:#888780;--tx-info:#0c447c;--tx-warn:#633806;--tx-danger:#791f1f;--tx-ok:#27500a;
+  --br:rgba(0,0,0,0.10);--br2:rgba(0,0,0,0.20);--br-info:#85b7eb;--br-warn:#fac775;--br-danger:#f09595;--br-ok:#97c459;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"SF Mono","Fira Code","Roboto Mono",monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--bg2:#252523;--bg-info:#042c53;--bg-warn:#412402;--bg-danger:#501313;--bg-ok:#173404;
+  --tx:#f0ede8;--tx2:#b4b2a9;--tx3:#888780;--tx-info:#85b7eb;--tx-warn:#fac775;--tx-danger:#f09595;--tx-ok:#97c459;
+  --br:rgba(255,255,255,0.10);--br2:rgba(255,255,255,0.20);--br-info:#185fa5;--br-warn:#854f0b;--br-danger:#a32d2d;--br-ok:#3b6d11;
+}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg2);color:var(--tx);min-height:100vh;}
+input,select,textarea,button{font-family:var(--font);}
+input,select{background:var(--bg);color:var(--tx);border:0.5px solid var(--br2);border-radius:8px;padding:6px 10px;font-size:13px;}
+input:focus,select:focus{outline:2px solid var(--br-info);outline-offset:1px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script>
+window.storage = {
+  get: async function(k){ try{ var v=localStorage.getItem(k); return v?{value:v}:null; }catch(e){return null;} },
+  set: async function(k,v){ try{ localStorage.setItem(k,v); return {key:k,value:v}; }catch(e){return null;} }
+};
+</script>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useCallback } = React;
+
+/* ── CONTRATO LEGAL ────────────────────────── */
+const TRC = {
+  v:"2026.01", norm:"Lei 15.270/2025",
+  a6:  { lim:50000,  aliq:0.10 },
+  a16: { lz:600000, lf:1200000, af:0.10, div:60000, k:10 },
+  a16b:{ limites:{geral:0.34,financeira_seguro:0.40,banco:0.45}, tipoLabels:{geral:"Geral 34%",financeira_seguro:"Financeira 40%",banco:"Banco 45%"} }
+};
+
+const TAX = {
+  DIV_FECHADA:      {n:"Dividendo PJ fechada",    g:"Dividendos",eR:true, bM:true, i6A:true, inc:"par5",  c:false},
+  DIV_ABERTA:       {n:"Dividendo cia. aberta",   g:"Dividendos",eR:true, bM:true, i6A:true, inc:"par5",  c:false},
+  DIV_GRAND:        {n:"Dividendo grandfathering",g:"Dividendos",eR:true, bM:false,i6A:false,inc:null,    c:false},
+  JCP:              {n:"JCP",                     g:"Dividendos",eR:true, bM:true, i6A:false,inc:"incII", c:false},
+  REND_CDB:         {n:"CDB / RDB / LC",          g:"Renda Fixa",eR:true, bM:true, i6A:false,inc:"incII", c:false},
+  REND_FUNDO_TRIB:  {n:"Fundo tributado",         g:"Renda Fixa",eR:true, bM:true, i6A:false,inc:"incII", c:false},
+  REND_LCI_LCA:     {n:"LCI/LCA/LIG/CRI/CRA",    g:"Isento",    eR:true, bM:false,i6A:false,inc:null,    c:false},
+  REND_FII_DIST:    {n:"FII isento",              g:"Isento",    eR:true, bM:false,i6A:false,inc:null,    c:true},
+  REND_FIAGRO_DIST: {n:"Fiagro isento",           g:"Isento",    eR:true, bM:false,i6A:false,inc:null,    c:true},
+  GCAP:             {n:"Ganho de capital geral",  g:"Especial",  eR:true, bM:true, i6A:false,inc:"incII", c:false},
+  GC_BOLSA:         {n:"Ganho em bolsa",          g:"Especial",  eR:true, bM:false,i6A:false,inc:null,    c:false},
+  SALARIO:          {n:"Salário / CLT",           g:"Trabalho",  eR:true, bM:true, i6A:false,inc:"incI",  c:false},
+  PROLABORE:        {n:"Pró-labore",              g:"Trabalho",  eR:true, bM:true, i6A:false,inc:"incI",  c:false},
+  ALUGUEL_PJ:       {n:"Aluguel de PJ",           g:"Trabalho",  eR:true, bM:true, i6A:false,inc:"incI",  c:false},
+  ALUGUEL_PF:       {n:"Aluguel de PF",           g:"Trabalho",  eR:true, bM:true, i6A:false,inc:null,    c:false},
+  CARNE_LEAO:       {n:"Carnê-leão pago",         g:"Ajuste",    eR:false,bM:false,i6A:false,inc:"daa",   c:false},
+  IRPF_LEI14754:    {n:"IR Lei 14.754/2023",      g:"Crédito",   eR:false,bM:false,i6A:false,inc:"incIII",c:false},
+};
+
+/* ── MOTOR ─────────────────────────────────── */
+function calcMotor6A(lans) {
+  const ac={}, res={};
+  [...lans].filter(l=>TAX[l.cod]?.i6A&&!l.grandfathering)
+    .sort((a,b)=>a.data===b.data?(a.seq||0)-(b.seq||0):a.data.localeCompare(b.data))
+    .forEach(ev=>{
+      const mes=ev.data.slice(0,7), k=`${ev.cnpj}__${mes}`;
+      if(!ac[k]) ac[k]={tot:0,iAc:0};
+      ac[k].tot+=ev.valorBruto;
+      const sup=ac[k].tot>TRC.a6.lim, iT=sup?ac[k].tot*TRC.a6.aliq:0, iEv=Math.max(0,iT-ac[k].iAc);
+      ac[k].iAc=iT;
+      res[ev.id]={dep:ac[k].tot,mes,cnpj:ev.cnpj,nome:ev.nome,sup,iT,iEv};
+    });
+  return res;
+}
+function calcBase(lans) {
+  const evs=[],excl=[],pend=[];let bB=0;
+  lans.forEach(l=>{
+    const t=TAX[l.cod];
+    if(!t){pend.push({id:l.id,nome:l.nome||l.cod,m:"Não classificado"});return;}
+    if(!t.eR)return;
+    bB+=l.valorBruto;
+    if(l.grandfathering){excl.push({id:l.id,v:l.valorBruto,m:"Grandfathering",cod:l.cod});return;}
+    if(t.c){if(l.requisitosIsencao===true)excl.push({id:l.id,v:l.valorBruto,m:"FII/Fiagro isento",cod:l.cod});
+      else{pend.push({id:l.id,nome:l.nome,m:"Requisitos FII/Fiagro não confirmados"});evs.push({...l});}return;}
+    t.bM?evs.push({...l}):excl.push({id:l.id,v:l.valorBruto,m:"Exclusão legal",cod:l.cod});
+  });
+  return {bM:evs.reduce((s,e)=>s+e.valorBruto,0),bB,excl,pend};
+}
+function calcAliq(b){if(b<=TRC.a16.lz)return 0;if(b>=TRC.a16.lf)return TRC.a16.af;return(b/TRC.a16.div-TRC.a16.k)/100;}
+function calcRedutores(lans,bM,tMB,pjData){
+  const divPJ={};
+  lans.forEach(l=>{if((l.cod!=="DIV_FECHADA"&&l.cod!=="DIV_ABERTA")||l.grandfathering||!TAX[l.cod]?.bM)return;if(!divPJ[l.cnpj])divPJ[l.cnpj]={nome:l.nome,total:0};divPJ[l.cnpj].total+=l.valorBruto;});
+  return Object.entries(divPJ).map(([cnpj,{nome,total}])=>{
+    const pd=(pjData||{})[cnpj]||{},{irpjCsll,lucroContabil,tipoPJ="geral"}=pd;
+    const pend=irpjCsll==null||lucroContabil==null||lucroContabil===0, lim=TRC.a16b.limites[tipoPJ]||0.34;
+    const bMSem=Math.max(0,bM-total),tSem=bMSem*calcAliq(bMSem),ac=Math.max(0,tMB-tSem);
+    const aPF=total>0?ac/total:0, aPJ=(!pend&&lucroContabil>0)?irpjCsll/lucroContabil:null;
+    const soma=!pend?aPJ+aPF:null, exc=!pend&&soma>lim, dif=exc?soma-lim:0, red=exc?total*dif:0;
+    return {cnpj,nome,dividendos:total,tCom:tMB,tSem,ac,aPF,aPJ,soma,lim,exc,dif,red,pend,tipoPJ,pd};
+  });
+}
+function calcTrib(lans,m6A,pjData){
+  const {bM,bB,excl,pend}=calcBase(lans),aliq=calcAliq(bM),tMB=bM*aliq;
+  const incI=lans.reduce((s,l)=>TAX[l.cod]?.inc==="incI"?s+l.irrf:s,0);
+  const incII=lans.reduce((s,l)=>TAX[l.cod]?.inc==="incII"&&TAX[l.cod]?.bM?s+l.irrf:s,0);
+  const incIII=lans.reduce((s,l)=>TAX[l.cod]?.inc==="incIII"?s+l.irrf:s,0);
+  const reds=calcRedutores(lans,bM,tMB,pjData||{}), incV=reds.reduce((s,r)=>s+r.red,0);
+  const tD3=incI+incII+incIII+incV, r3=tMB-tD3, r4=Math.max(0,r3), p4=r3<0;
+  const i6A=Object.values(m6A).reduce((s,m)=>s+m.iEv,0), r5=r4-i6A;
+  const cL=lans.filter(l=>l.cod==="CARNE_LEAO").reduce((s,l)=>s+l.irrf,0);
+  const iP=lans.reduce((s,l)=>TAX[l.cod]?.inc==="incI"?s+l.irrf:s,0);
+  return {bB,bM,excl,pend,aliq,tMB,incI,incII,incIII,incV,reds,tD3,r3,r4,p4,i6A,r5,cL,iP,sDA:-(iP+cL),sDF:-(iP+cL)+r5};
+}
+function fullCalc(lans,pjData){return calcTrib(lans,calcMotor6A(lans),pjData);}
+
+/* ── SNAPSHOT ───────────────────────────────── */
+function criarSnapshot({lans,pjData,consultor,tipo,nota}){
+  const m6A=calcMotor6A(lans),trib=calcTrib(lans,m6A,pjData);
+  return {id:"snap_"+Date.now(),ts:new Date().toISOString(),consultor,versaoRegra:TRC.v,norma:TRC.norm,tipo,nota:nota||"",
+    lansSnapshot:JSON.parse(JSON.stringify(lans)),pjDataSnapshot:JSON.parse(JSON.stringify(pjData||{})),
+    resultado:{bB:trib.bB,bM:trib.bM,aliq:trib.aliq,tMB:trib.tMB,incI:trib.incI,incII:trib.incII,incIII:trib.incIII,incV:trib.incV,i6A:trib.i6A,r3:trib.r3,r4:trib.r4,r5:trib.r5,sDF:trib.sDF,pendencias:trib.pend.map(p=>({nome:p.nome,m:p.m})),numLancamentos:lans.length}};
+}
+
+/* ── DADOS MENSAIS ──────────────────────────── */
+const MESES_PT=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+function buildMonthlyData(lans){
+  const months={};
+  for(let m=1;m<=12;m++){const k=`2026-${String(m).padStart(2,"0")}`;months[k]={baseMin:0,irrf6A:0,mes:m};}
+  const m6A=calcMotor6A(lans);
+  lans.forEach(l=>{const t=TAX[l.cod];if(!t||!t.eR||!t.bM||l.grandfathering)return;const mes=l.data.slice(0,7);if(months[mes])months[mes].baseMin+=l.valorBruto;});
+  Object.values(m6A).forEach(m=>{if(months[m.mes])months[m.mes].irrf6A+=m.iEv;});
+  let cum=0;
+  return Object.entries(months).sort().map(([k,d])=>{cum+=d.baseMin;return {...d,k,cumBase:cum,label:MESES_PT[d.mes-1]};});
+}
+
+/* ── GRÁFICO SVG PURO (sem Recharts) ───────── */
+function GraficoMensal({lans}){
+  const data=useMemo(()=>buildMonthlyData(lans),[lans]);
+  const totBase=data[data.length-1]?.cumBase||0;
+  const totIRRF=data.reduce((s,d)=>s+d.irrf6A,0);
+  const W=560, H=200, PL=52, PR=8, PT=10, PB=28;
+  const cW=(W-PL-PR)/12, iW=cW*0.35;
+  const maxV=Math.max(TRC.a16.lf*1.05,...data.map(d=>Math.max(d.cumBase,d.baseMin)));
+  const maxI=Math.max(1,...data.map(d=>d.irrf6A));
+  const yScale=v=>PT+H-PB-(v/maxV)*(H-PT-PB);
+  const yScaleI=v=>PT+H-PB-(v/maxI)*(H-PT-PB)*0.4;
+  const points=data.map((d,i)=>`${PL+i*cW+cW/2},${yScale(d.cumBase)}`).join(" ");
+  const ticksY=[0,TRC.a16.lz,TRC.a16.lf].filter(v=>v<=maxV);
+  return (
+    <div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
+        {[{l:"Base acumulada",v:`R$${(totBase/1000).toFixed(0)}k`},{l:"Meses c/ lançamentos",v:data.filter(d=>d.baseMin>0).length},{l:"IRRF Art. 6-A total",v:`R$${(totIRRF/1000).toFixed(0)}k`,d:totIRRF>0},{l:"Meses c/ retenção",v:data.filter(d=>d.irrf6A>0).length,d:data.some(d=>d.irrf6A>0)}].map(m=>(
+          <div key={m.l} style={{background:"var(--bg2)",borderRadius:8,padding:"10px 14px",flex:1,minWidth:100}}>
+            <div style={{fontSize:11,color:"var(--tx3)",marginBottom:3}}>{m.l}</div>
+            <div style={{fontSize:15,fontWeight:500,color:m.d?"var(--tx-danger)":"var(--tx)"}}>{m.v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:14,marginBottom:8,flexWrap:"wrap"}}>
+        {[{cor:"#185FA5",l:"Base acumulada"},{cor:"rgba(24,95,165,0.45)",l:"Base do mês"},{cor:"#E24B4A",l:"IRRF Art. 6-A"},{cor:"#EF9F27",l:"R$600k limiar"},{cor:"#E24B4A",l:"R$1,2M flat"}].map(x=>(
+          <div key={x.l} style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:12,height:3,borderRadius:2,background:x.cor}}/>
+            <span style={{fontSize:11,color:"var(--tx3)"}}>{x.l}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{background:"var(--bg2)",borderRadius:10,padding:"10px 4px 4px",overflowX:"auto"}}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",maxWidth:W,display:"block"}}>
+          {/* grid */}
+          {ticksY.map(v=>(
+            <g key={v}>
+              <line x1={PL} y1={yScale(v)} x2={W-PR} y2={yScale(v)} stroke={v===0?"rgba(0,0,0,0.1)":v===TRC.a16.lz?"#EF9F27":"#E24B4A"} strokeWidth={v===0?1:1} strokeDasharray={v>0?"4,4":""}/>
+              <text x={PL-4} y={yScale(v)+4} textAnchor="end" fontSize="9" fill="#888780">{`R$${(v/1000).toFixed(0)}k`}</text>
+              {v>0&&<text x={W-PR-2} y={yScale(v)-3} textAnchor="end" fontSize="8" fill={v===TRC.a16.lz?"#EF9F27":"#E24B4A"}>{v===TRC.a16.lz?"600k":"1,2M"}</text>}
+            </g>
+          ))}
+          {/* barras base mês */}
+          {data.map((d,i)=>(
+            <rect key={"bm"+i} x={PL+i*cW+(cW-iW*2-2)/2} y={yScale(d.baseMin)} width={iW} height={Math.max(0,(H-PB)-yScale(d.baseMin))} fill="rgba(24,95,165,0.45)" rx="2"/>
+          ))}
+          {/* barras IRRF */}
+          {data.map((d,i)=>d.irrf6A>0&&(
+            <rect key={"ir"+i} x={PL+i*cW+(cW-iW*2-2)/2+iW+2} y={yScaleI(d.irrf6A)} width={iW} height={Math.max(0,(H-PB)-yScaleI(d.irrf6A))} fill="#E24B4A" rx="2"/>
+          ))}
+          {/* linha base acumulada */}
+          <polyline points={points} fill="none" stroke="#185FA5" strokeWidth="2"/>
+          {data.map((d,i)=>(
+            <circle key={"pt"+i} cx={PL+i*cW+cW/2} cy={yScale(d.cumBase)} r="3" fill="#185FA5"/>
+          ))}
+          {/* labels eixo X */}
+          {data.map((d,i)=>(
+            <text key={"lx"+i} x={PL+i*cW+cW/2} y={H-4} textAnchor="middle" fontSize="9" fill="#888780">{d.label}</text>
+          ))}
+        </svg>
+      </div>
+      <div style={{marginTop:8,display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:2}}>
+        {data.map(d=>{const cor=calcAliq(d.cumBase)>=0.10?"#E24B4A":calcAliq(d.cumBase)>0?"#EF9F27":"#1D9E75";return(
+          <div key={d.k} style={{textAlign:"center"}}>
+            <div style={{height:4,borderRadius:2,background:cor,marginBottom:2}}/>
+            <div style={{fontSize:8,color:"var(--tx3)"}}>{d.label}</div>
+            {d.irrf6A>0&&<div style={{fontSize:8,color:"#E24B4A"}}>⚠</div>}
+          </div>
+        );})}
+      </div>
+      <div style={{fontSize:11,color:"var(--tx3)",marginTop:4}}>Heatmap: verde = abaixo do limiar · âmbar = zona linear · vermelho = flat 10%</div>
+    </div>
+  );
+}
+
+/* ── MOCK DATA ──────────────────────────────── */
+const CONS=[{id:"c1",nome:"Ana Lima",email:"ana@firma.com",senha:"123",avatar:"AL"},{id:"c2",nome:"Bruno Ferraz",email:"bruno@firma.com",senha:"123",avatar:"BF"},{id:"c3",nome:"Carla Neves",email:"carla@firma.com",senha:"123",avatar:"CN"}];
+const SCFG={novo:{label:"Novo",cor:"#5f5e5a",bg:"#f3f3ef"},em_analise:{label:"Em análise",cor:"#633806",bg:"#faeeda"},apresentado:{label:"Apresentado",cor:"#0c447c",bg:"#e6f1fb"},followup:{label:"Follow-up",cor:"#3c3489",bg:"#eeedfe"},encerrado:{label:"Encerrado",cor:"#27500a",bg:"#eaf3de"}};
+const PIPE=["novo","em_analise","apresentado","followup","encerrado"];
+const INIT_LANS=[
+  {id:"l001",cod:"DIV_FECHADA", data:"2026-03-15",cnpj:"11111111000111",nome:"Empresa Alpha Ltda",valorBruto:80000,irrf:8000,grandfathering:false,requisitosIsencao:null,seq:1},
+  {id:"l002",cod:"DIV_FECHADA", data:"2026-03-28",cnpj:"11111111000111",nome:"Empresa Alpha Ltda",valorBruto:60000,irrf:0,   grandfathering:false,requisitosIsencao:null,seq:2},
+  {id:"l003",cod:"REND_LCI_LCA",data:"2026-05-20",cnpj:"22222222000122",nome:"Banco Beta S.A.",   valorBruto:30000,irrf:0,   grandfathering:false,requisitosIsencao:null,seq:1},
+  {id:"l004",cod:"SALARIO",     data:"2026-06-30",cnpj:"33333333000133",nome:"Empregadora Gama",  valorBruto:25000,irrf:3200,grandfathering:false,requisitosIsencao:null,seq:1},
+  {id:"l005",cod:"REND_CDB",    data:"2026-04-15",cnpj:"44444444000144",nome:"Banco Delta",       valorBruto:50000,irrf:7500,grandfathering:false,requisitosIsencao:null,seq:1},
+];
+const CLIS0=[
+  {id:"cli1",cId:"c1",nome:"João da Silva",       cpf:"***.***.***-01",status:"followup",  rend:1450000,ultApres:"2026-03-10",proxFup:"2026-04-10",notaFup:"Revisar dividendos Q2 e Art. 16-B",pend:0,hist:[{data:"2026-03-10",tipo:"apres",nota:"Cenário base apresentado."}],notas:"Sócio majoritário da Alpha Ltda.",cadastro:"2026-01-15",lans:INIT_LANS,cens:[],snapshots:[],pjData:{"11111111000111":{irpjCsll:200000,lucroContabil:800000,tipoPJ:"geral"}}},
+  {id:"cli2",cId:"c1",nome:"Maria Fernanda Costa",cpf:"***.***.***-02",status:"apresentado",rend:780000, ultApres:"2026-04-01",proxFup:"2026-05-01",notaFup:"Verificar FIIs",pend:1,hist:[{data:"2026-04-01",tipo:"apres",nota:"Primeira apresentação."}],notas:"FIIs, LCIs e salário.",cadastro:"2026-02-10",
+    lans:[{id:"l101",cod:"REND_FII_DIST",data:"2026-03-10",cnpj:"55555555000155",nome:"FII Renda Plus",valorBruto:50000,irrf:0,grandfathering:false,requisitosIsencao:null,seq:1},{id:"l102",cod:"REND_LCI_LCA",data:"2026-04-05",cnpj:"22222222000122",nome:"Banco Beta S.A.",valorBruto:100000,irrf:0,grandfathering:false,requisitosIsencao:null,seq:1},{id:"l103",cod:"SALARIO",data:"2026-06-30",cnpj:"33333333000133",nome:"Empresa Própria S.A.",valorBruto:25000,irrf:3000,grandfathering:false,requisitosIsencao:null,seq:1}],cens:[],snapshots:[],pjData:{}},
+  {id:"cli3",cId:"c1",nome:"Roberto Andrade",     cpf:"***.***.***-03",status:"em_analise",rend:620000, ultApres:null,        proxFup:"2026-04-25",notaFup:"Levantar estrutura",pend:0,hist:[],notas:"Estrutura societária complexa.",cadastro:"2026-03-28",lans:[],cens:[],snapshots:[],pjData:{}},
+  {id:"cli4",cId:"c2",nome:"Patrícia Almeida",    cpf:"***.***.***-04",status:"followup",  rend:1200000,ultApres:"2026-03-15",proxFup:"2026-04-20",notaFup:"Grandfathering",    pend:0,hist:[],notas:"Holding familiar.",cadastro:"2026-01-08",lans:[],cens:[],snapshots:[],pjData:{}},
+  {id:"cli5",cId:"c2",nome:"Carlos Mendonça",     cpf:"***.***.***-05",status:"novo",      rend:950000, ultApres:null,        proxFup:"2026-04-28",notaFup:"Onboarding",       pend:0,hist:[],notas:"Agro. Fiagro e PJ.",cadastro:"2026-04-10",lans:[],cens:[],snapshots:[],pjData:{}},
+  {id:"cli6",cId:"c3",nome:"Luciana Pires",       cpf:"***.***.***-06",status:"encerrado", rend:700000, ultApres:"2026-02-20",proxFup:null,         notaFup:"",               pend:0,hist:[],notas:"Encerrado.",cadastro:"2025-11-01",lans:[],cens:[],snapshots:[],pjData:{}},
+];
+
+/* ── HELPERS ────────────────────────────────── */
+const fmt  = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+const fmtP = v => (v*100).toFixed(2)+"%";
+const fmtD = d => d?new Date(d+"T12:00").toLocaleDateString("pt-BR"):"—";
+const fmtTs= ts=>{const d=new Date(ts);return d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});};
+const TODAY="2026-04-20";
+const FDEF={cod:"DIV_FECHADA",data:"2026-01-01",cnpj:"",nome:"",valorBruto:"",irrf:"",grandfathering:false,requisitosIsencao:null,seq:1};
+const CORG={Dividendos:"#185FA5","Renda Fixa":"#0F6E56",Isento:"#639922",Especial:"#BA7517",Trabalho:"#534AB7",Ajuste:"#888780",Crédito:"#888780"};
+
+function alertNivel(r){if(r>=1080000)return"danger";if(r>=840000)return"warning";if(r>600000)return"info";return null;}
+function alertMsg(r){const p=Math.round((r/1200000)*100);if(r>=1200000)return"Alíquota flat 10%";if(r>=1080000)return`${p}% do limiar — crítico`;if(r>=840000)return`${p}% — atenção`;return"Tributação mínima ativa";}
+
+const s0={fontSize:13,color:"var(--tx2)"};
+const i0={fontSize:13,padding:"7px 10px",borderRadius:8,border:"0.5px solid var(--br2)",background:"var(--bg)",color:"var(--tx)"};
+const C={background:"var(--bg)",border:"0.5px solid var(--br)",borderRadius:12,padding:"14px 18px",marginBottom:12};
+const MC={background:"var(--bg2)",borderRadius:8,padding:"10px 14px",flex:1,minWidth:100};
+
+function Bdg({st}){const c=SCFG[st]||SCFG.novo;return <span style={{fontSize:11,padding:"2px 10px",borderRadius:99,background:c.bg,color:c.cor,fontWeight:500,whiteSpace:"nowrap"}}>{c.label}</span>;}
+function MC2({label,value,danger,ok}){const color=danger?"var(--tx-danger)":ok?"var(--tx-ok)":"var(--tx)";return <div style={MC}><div style={{fontSize:11,color:"var(--tx3)",marginBottom:3}}>{label}</div><div style={{fontSize:15,fontWeight:500,color}}>{value}</div></div>;}
+function RL({l,v,bold,ok,dg,ind}){return <div style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"0.5px solid var(--br)",paddingLeft:ind?16:0}}><span style={{fontSize:13,fontWeight:bold?500:400,color:bold?"var(--tx)":"var(--tx2)"}}>{l}</span><span style={{fontSize:13,fontWeight:bold?500:400,color:ok?"var(--tx-ok)":dg?"var(--tx-danger)":"var(--tx)"}}>{v}</span></div>;}
+
+/* ── PERSISTÊNCIA ───────────────────────────── */
+const SKEY=cId=>`espelho:v1:${cId}`;
+async function saveData(cId,clis){try{await window.storage.set(SKEY(cId),JSON.stringify(clis));}catch(e){}}
+async function loadData(cId){try{const r=await window.storage.get(SKEY(cId));if(r&&r.value)return JSON.parse(r.value);}catch(e){}return null;}
+function useSaveStatus(){const[s,setS]=useState(null);const show=useCallback(v=>{setS(v);setTimeout(()=>setS(null),2200);},[]);return [s,show];}
+
+/* ── INTELIGÊNCIA ───────────────────────────── */
+function getRisco(cli){
+  if(!cli.lans?.length)return{nivel:"sem_dados",score:0,label:"Sem dados",cor:"#888780",aliq:0,sDF:0,bM:0,i6A:0,pend:0};
+  const t=fullCalc(cli.lans,cli.pjData||{});
+  const score=t.aliq*100+t.pend.length*5,nivel=t.aliq>=0.10?"critico":t.aliq>=0.05?"alto":t.aliq>0?"moderado":"baixo";
+  const labels={critico:"Crítico",alto:"Alto",moderado:"Moderado",baixo:"Abaixo do limiar"};
+  const cores={critico:"#E24B4A",alto:"#EF9F27",moderado:"#BA7517",baixo:"#1D9E75"};
+  return {nivel,score,label:labels[nivel],cor:cores[nivel],aliq:t.aliq,sDF:t.sDF,bM:t.bM,i6A:t.i6A,pend:t.pend.length};
+}
+function IntelCarteira({clientes}){
+  const ranks=useMemo(()=>clientes.filter(c=>c.status!=="encerrado"&&c.lans?.length>0).map(c=>({...c,...getRisco(c)})).sort((a,b)=>b.score-a.score),[clientes]);
+  const criticos=ranks.filter(r=>r.nivel==="critico"),semDados=clientes.filter(c=>c.status!=="encerrado"&&!c.lans?.length);
+  const totBase=ranks.reduce((s,r)=>s+(r.bM||0),0),totIRRF=ranks.reduce((s,r)=>s+(r.i6A||0),0);
+  return (
+    <div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+        <MC2 label="Em alíquota flat" value={criticos.length} danger={criticos.length>0}/>
+        <MC2 label="Base total carteira" value={`R$${(totBase/1e6).toFixed(1)}M`}/>
+        <MC2 label="IRRF Art. 6-A total" value={`R$${(totIRRF/1000).toFixed(0)}k`} danger={totIRRF>0}/>
+        <MC2 label="Sem dados lançados" value={semDados.length} danger={semDados.length>0}/>
+      </div>
+      {criticos.length>0&&<div style={{padding:"10px 14px",background:"var(--bg-danger)",borderRadius:10,border:"0.5px solid var(--br-danger)",marginBottom:12}}><div style={{fontSize:12,fontWeight:500,color:"var(--tx-danger)",marginBottom:4}}>Alerta — {criticos.length} cliente(s) em alíquota flat 10%</div><div style={{fontSize:12,color:"var(--tx-danger)"}}>{criticos.map(c=>c.nome).join(" · ")}</div></div>}
+      <div style={{background:"var(--bg)",border:"0.5px solid var(--br)",borderRadius:12,overflow:"hidden"}}>
+        <div style={{padding:"10px 14px",borderBottom:"0.5px solid var(--br)",background:"var(--bg2)"}}><span style={{fontSize:12,fontWeight:500}}>Ranking de risco fiscal</span></div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr style={{borderBottom:"0.5px solid var(--br)"}}>{["#","Cliente","Risco","Base mínima","Alíquota","IRRF 6-A","Saldo DAA","Pend."].map(h=><th key={h} style={{textAlign:"left",padding:"8px 12px",fontWeight:500,fontSize:11,color:"var(--tx3)",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {ranks.map((r,i)=>(
+                <tr key={r.id} style={{borderBottom:"0.5px solid var(--br)",background:i===0?"var(--bg2)":"transparent"}}>
+                  <td style={{padding:"9px 12px",color:"var(--tx3)"}}>{i+1}</td>
+                  <td style={{padding:"9px 12px",fontWeight:500}}>{r.nome}</td>
+                  <td style={{padding:"9px 12px"}}><span style={{fontSize:11,padding:"2px 8px",borderRadius:99,background:r.cor+"20",color:r.cor,fontWeight:500}}>{r.label}</span></td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace"}}>{fmt(r.bM||0)}</td>
+                  <td style={{padding:"9px 12px",fontWeight:500,color:r.cor,fontFamily:"monospace"}}>{fmtP(r.aliq||0)}</td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",color:(r.i6A||0)>0?"var(--tx-danger)":"var(--tx3)"}}>{(r.i6A||0)>0?fmt(r.i6A):"—"}</td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",color:(r.sDF||0)<0?"var(--tx-ok)":(r.sDF||0)>0?"var(--tx-danger)":"var(--tx3)"}}>{fmt(r.sDF||0)}</td>
+                  <td style={{padding:"9px 12px",textAlign:"center"}}>{(r.pend||0)>0?<span style={{fontSize:11,padding:"2px 7px",borderRadius:99,background:"var(--bg-warn)",color:"var(--tx-warn)",fontWeight:500}}>{r.pend}</span>:<span style={{color:"var(--tx3)"}}>—</span>}</td>
+                </tr>
+              ))}
+              {semDados.map(c=><tr key={c.id} style={{borderBottom:"0.5px solid var(--br)",opacity:0.5}}><td style={{padding:"9px 12px",color:"var(--tx3)"}}>—</td><td style={{padding:"9px 12px"}}>{c.nome}</td><td colSpan={6} style={{padding:"9px 12px",color:"var(--tx3)",fontSize:11}}>Sem lançamentos</td></tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── AUDITORIA ──────────────────────────────── */
+const LINHAS_AUDIT=[
+  {l:"Rendimentos brutos",k:"bB",bold:false},{l:"Base trib. mínima",k:"bM",bold:true},
+  {l:"Alíquota",k:"aliq",bold:false,pct:true},{l:"Trib. mínima bruta",k:"tMB",bold:false},
+  {l:"Inc. I — IRRF progressivo",k:"incI",bold:false},{l:"Inc. II — IRRF exclusivo",k:"incII",bold:false},
+  {l:"Inc. V — Redutor 16-B",k:"incV",bold:false},{l:"IRRF Art. 6º-A (§ 5º)",k:"i6A",bold:true},
+  {l:"Resultado § 5º",k:"r5",bold:false},{l:"Saldo DAA estimado",k:"sDF",bold:true},
+];
+function SnapshotBadge({tipo}){const cfg=tipo==="apresentacao"?{label:"Apresentação",bg:"var(--bg-info)",cor:"var(--tx-info)"}:{label:"Versão manual",bg:"var(--bg-ok)",cor:"var(--tx-ok)"};return <span style={{fontSize:11,padding:"2px 8px",borderRadius:99,background:cfg.bg,color:cfg.cor,fontWeight:500,whiteSpace:"nowrap"}}>{cfg.label}</span>;}
+
+function HistoricoAuditoria({snapshots,onNovoSnapshot,lans,pjData,consultor}){
+  const [sel,setSel]=useState(null),[cmp,setCmp]=useState(null),[nota,setNota]=useState(""),[modoCmp,setModoCmp]=useState(false);
+  const snaps=[...(snapshots||[])].sort((a,b)=>b.ts.localeCompare(a.ts));
+  function salvarVersao(){if(!lans.length)return;onNovoSnapshot(criarSnapshot({lans,pjData,consultor,tipo:"manual",nota}));setNota("");}
+  function DeltaCell({bv,cv,pct}){if(bv==null||cv==null)return <span style={{color:"var(--tx3)"}}>—</span>;const d=cv-bv;if(Math.abs(d)<0.01)return <span style={{color:"var(--tx3)"}}>sem alt.</span>;const cor=d<0?"var(--tx-ok)":"var(--tx-danger)";const txt=pct?(d>=0?"+":"")+((d)*100).toFixed(2)+"p.p.":(d>=0?"+":"")+fmt(d);return <span style={{color:cor,fontWeight:500}}>{txt}</span>;}
+  return (
+    <div>
+      <div style={C}>
+        <div style={{fontSize:12,fontWeight:500,marginBottom:10}}>Salvar versão de cálculo</div>
+        <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+          <div style={{flex:1,display:"flex",flexDirection:"column",gap:4,minWidth:200}}><label style={{fontSize:11,color:"var(--tx3)"}}>Nota sobre esta versão</label><input value={nota} onChange={e=>setNota(e.target.value)} placeholder="Ex.: Antes da decisão sobre grandfathering..." style={{...i0,width:"100%"}}/></div>
+          <button onClick={salvarVersao} disabled={!lans.length} style={{padding:"6px 18px",borderRadius:8,fontSize:13,fontWeight:500,background:lans.length?"var(--bg-ok)":"var(--bg2)",color:lans.length?"var(--tx-ok)":"var(--tx3)",border:`0.5px solid ${lans.length?"var(--br-ok)":"var(--br)"}`,cursor:lans.length?"pointer":"default"}}>Salvar versão atual</button>
+        </div>
+        <div style={{fontSize:11,color:"var(--tx3)",marginTop:8}}>Toda apresentação gera snapshot automático. Use "Salvar versão" para marcos intermediários.</div>
+      </div>
+      {snaps.length===0&&<div style={{...C,textAlign:"center",padding:28,background:"var(--bg2)"}}><div style={s0}>Nenhuma versão registrada. Faça uma apresentação ou salve manualmente.</div></div>}
+      {modoCmp&&sel&&cmp&&(
+        <div style={{...C,borderColor:"var(--br-info)",background:"var(--bg-info)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontSize:12,fontWeight:500,color:"var(--tx-info)"}}>Comparando versões</div>
+            <button onClick={()=>{setModoCmp(false);setCmp(null);}} style={{fontSize:11,padding:"2px 10px",borderRadius:6,border:"0.5px solid var(--br-info)",background:"transparent",color:"var(--tx-info)",cursor:"pointer"}}>Fechar</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            {[sel,cmp].map((s,i)=><div key={i} style={{background:"var(--bg)",borderRadius:8,padding:"10px 12px"}}><div style={{fontSize:11,fontWeight:500,marginBottom:2}}>Versão {i===0?"A":"B"} — {fmtTs(s.ts)}</div><div style={{fontSize:11,color:"var(--tx3)"}}>{s.nota||s.tipo} · Regra {s.versaoRegra}</div></div>)}
+          </div>
+          <div style={{background:"var(--bg)",borderRadius:10,overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",background:"var(--bg2)",borderBottom:"0.5px solid var(--br)"}}>{["Métrica","Versão A","Versão B","Variação"].map((h,i)=><div key={i} style={{padding:"7px 12px",fontSize:11,fontWeight:500,color:"var(--tx3)",borderRight:i<3?"0.5px solid var(--br)":"none",textAlign:i>0?"right":"left"}}>{h}</div>)}</div>
+            {LINHAS_AUDIT.map((r,i)=>{const va=sel.resultado[r.k],vb=cmp.resultado[r.k];return(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",borderBottom:"0.5px solid var(--br)",background:r.bold?"var(--bg2)":"transparent"}}>
+                <div style={{padding:"8px 12px",fontSize:12,fontWeight:r.bold?500:400,color:"var(--tx2)",borderRight:"0.5px solid var(--br)"}}>{r.l}</div>
+                <div style={{padding:"8px 12px",fontSize:12,textAlign:"right",fontFamily:"monospace",borderRight:"0.5px solid var(--br)"}}>{r.pct?fmtP(va||0):fmt(va||0)}</div>
+                <div style={{padding:"8px 12px",fontSize:12,textAlign:"right",fontFamily:"monospace",borderRight:"0.5px solid var(--br)"}}>{r.pct?fmtP(vb||0):fmt(vb||0)}</div>
+                <div style={{padding:"8px 12px",fontSize:12,textAlign:"right"}}><DeltaCell bv={va} cv={vb} pct={r.pct}/></div>
+              </div>
+            );})}
+          </div>
+          {sel.resultado.numLancamentos!==cmp.resultado.numLancamentos&&<div style={{marginTop:8,fontSize:12,color:"var(--tx-info)"}}>Lançamentos: {sel.resultado.numLancamentos} → {cmp.resultado.numLancamentos} ({cmp.resultado.numLancamentos-sel.resultado.numLancamentos>0?"+":""}{cmp.resultado.numLancamentos-sel.resultado.numLancamentos} eventos)</div>}
+        </div>
+      )}
+      {snaps.map((snap,idx)=>{
+        const expanded=sel?.id===snap.id&&!modoCmp,r=snap.resultado;
+        return(
+          <div key={snap.id} style={{display:"flex",gap:14,marginBottom:4}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0}}>
+              <div style={{width:12,height:12,borderRadius:"50%",background:snap.tipo==="apresentacao"?"#185FA5":"#1D9E75",marginTop:14,flexShrink:0}}/>
+              {idx<snaps.length-1&&<div style={{width:1,flex:1,background:"var(--br)",marginTop:4}}/>}
+            </div>
+            <div style={{...C,flex:1,cursor:"pointer",marginBottom:idx<snaps.length-1?4:12}} onClick={()=>setSel(expanded?null:snap)}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div>
+                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}><SnapshotBadge tipo={snap.tipo}/><span style={{fontSize:11,fontFamily:"monospace",background:"var(--bg2)",padding:"1px 7px",borderRadius:4,color:"var(--tx3)"}}>{snap.versaoRegra}</span></div>
+                  <div style={{fontSize:13,fontWeight:500}}>{fmtTs(snap.ts)}</div>
+                  <div style={{fontSize:12,color:"var(--tx3)",marginTop:2}}>{snap.consultor}{snap.nota?" · "+snap.nota:""}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                  <div style={{fontSize:16,fontWeight:500,color:r.sDF<0?"var(--tx-ok)":r.sDF>0?"var(--tx-danger)":"var(--tx)"}}>{fmt(r.sDF)}</div>
+                  <div style={{fontSize:11,color:"var(--tx3)"}}>Saldo DAA est.</div>
+                  <div style={{fontSize:12,color:"var(--tx3)",marginTop:2}}>{r.numLancamentos} lanç. · {fmtP(r.aliq)} alíq.</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+                {[{l:"Base mínima",v:fmt(r.bM)},{l:"Trib. mínima",v:fmt(r.tMB)},{l:"Redutor 16-B",v:fmt(r.incV),ok:r.incV>0},{l:"IRRF Art. 6-A",v:fmt(r.i6A),dg:r.i6A>0},{l:"Resultado § 5º",v:fmt(r.r5),ok:r.r5<0,dg:r.r5>0}].map(m=>(
+                  <div key={m.l} style={{background:"var(--bg2)",borderRadius:6,padding:"6px 10px"}}><div style={{fontSize:10,color:"var(--tx3)",marginBottom:2}}>{m.l}</div><div style={{fontSize:12,fontWeight:500,color:m.dg?"var(--tx-danger)":m.ok?"var(--tx-ok)":"var(--tx)"}}>{m.v}</div></div>
+                ))}
+              </div>
+              {expanded&&(
+                <div style={{marginTop:14}}>
+                  <div style={{borderTop:"0.5px solid var(--br)",paddingTop:14,marginBottom:10}}>
+                    <div style={{fontSize:12,fontWeight:500,marginBottom:8}}>Fluxo completo nesta versão</div>
+                    <div style={{background:"var(--bg2)",borderRadius:10,overflow:"hidden"}}>{LINHAS_AUDIT.map((ln,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 12px",borderBottom:"0.5px solid var(--br)",background:ln.bold?"rgba(0,0,0,0.02)":"transparent"}}><span style={{fontSize:12,fontWeight:ln.bold?500:400,color:"var(--tx2)"}}>{ln.l}</span><span style={{fontSize:12,fontWeight:ln.bold?500:400,fontFamily:"monospace"}}>{ln.pct?fmtP(r[ln.k]||0):fmt(r[ln.k]||0)}</span></div>)}</div>
+                  </div>
+                  {r.pendencias?.length>0&&<div style={{marginBottom:10}}><div style={{fontSize:12,fontWeight:500,marginBottom:6,color:"var(--tx-warn)"}}>Pendências nesta data ({r.pendencias.length})</div>{r.pendencias.map((p,i)=><div key={i} style={{fontSize:12,color:"var(--tx-warn)",marginBottom:2}}>· {p.nome}: {p.m}</div>)}</div>}
+                  <div style={{fontSize:11,color:"var(--tx3)"}}>Regra: {snap.norma} · v{snap.versaoRegra} · {snap.lansSnapshot?.length} lançamentos arquivados</div>
+                  <div style={{display:"flex",gap:8,marginTop:12}}>
+                    <button onClick={e=>{e.stopPropagation();setModoCmp(true);setSel(snap);setCmp(null);}} style={{padding:"5px 14px",borderRadius:8,fontSize:12,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer"}}>Usar como versão A para comparar</button>
+                  </div>
+                </div>
+              )}
+              {modoCmp&&sel?.id!==snap.id&&<div style={{marginTop:10}}><button onClick={e=>{e.stopPropagation();setCmp(snap);}} style={{padding:"5px 14px",borderRadius:8,fontSize:12,background:cmp?.id===snap.id?"var(--bg-ok)":"var(--bg2)",color:cmp?.id===snap.id?"var(--tx-ok)":"var(--tx2)",border:`0.5px solid ${cmp?.id===snap.id?"var(--br-ok)":"var(--br)"}`,cursor:"pointer"}}>{cmp?.id===snap.id?"✓ Versão B selecionada":"Selecionar como versão B"}</button></div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── LANÇAMENTOS ────────────────────────────── */
+function LanEditor({lans,onUpdate}){
+  const [form,setForm]=useState(FDEF);
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  function add(){if(!form.valorBruto)return;onUpdate([...lans,{...form,id:"l_"+Date.now(),valorBruto:parseFloat(form.valorBruto)||0,irrf:parseFloat(form.irrf)||0}]);setForm(FDEF);}
+  return (
+    <div>
+      <div style={C}>
+        <div style={{fontSize:11,color:"var(--tx3)",marginBottom:10}}>Adicionar lançamento</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+          {[{l:"Tipo",el:<select value={form.cod} onChange={e=>f("cod",e.target.value)} style={{...i0,minWidth:165}}>{Object.entries(TAX).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}</select>},{l:"Data",el:<input type="date" value={form.data} onChange={e=>f("data",e.target.value)} style={i0}/>},{l:"CNPJ",el:<input placeholder="00000000000000" value={form.cnpj} onChange={e=>f("cnpj",e.target.value)} style={{...i0,width:130}}/>},{l:"Nome",el:<input placeholder="Empresa / Banco" value={form.nome} onChange={e=>f("nome",e.target.value)} style={{...i0,width:150}}/>},{l:"Valor",el:<input type="number" placeholder="0" value={form.valorBruto} onChange={e=>f("valorBruto",e.target.value)} style={{...i0,width:115}}/>},{l:"IRRF",el:<input type="number" placeholder="0" value={form.irrf} onChange={e=>f("irrf",e.target.value)} style={{...i0,width:105}}/>},{l:"GF",el:<select value={form.grandfathering?"s":"n"} onChange={e=>f("grandfathering",e.target.value==="s")} style={i0}><option value="n">Não</option><option value="s">Sim (≤2025)</option></select>},{l:"Req.FII",el:<select value={form.requisitosIsencao===true?"s":form.requisitosIsencao===false?"n":"?"} onChange={e=>f("requisitosIsencao",e.target.value==="s"?true:e.target.value==="n"?false:null)} style={i0}><option value="?">N/A</option><option value="s">Sim</option><option value="n">Não</option></select>}].map(row=><div key={row.l} style={{display:"flex",flexDirection:"column",gap:3}}><label style={{fontSize:11,color:"var(--tx3)"}}>{row.l}</label>{row.el}</div>)}
+          <button onClick={add} style={{padding:"6px 16px",borderRadius:8,fontSize:13,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer",fontWeight:500,marginTop:14}}>+ Adicionar</button>
+        </div>
+      </div>
+      {lans.length>0&&<div style={C}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{borderBottom:"0.5px solid var(--br)"}}>{["Tipo","Grupo","Data","Fonte","Valor","IRRF","Base mín.",""].map(h=><th key={h} style={{textAlign:"left",padding:"5px 8px",fontWeight:500,fontSize:11,color:"var(--tx3)",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{lans.map(l=>{const t=TAX[l.cod];return(<tr key={l.id} style={{borderBottom:"0.5px solid var(--br)"}}><td style={{padding:"5px 8px"}}>{t?.n||<span style={{color:"var(--tx-danger)"}}>! {l.cod}</span>}</td><td style={{padding:"5px 8px"}}>{t?<span style={{fontSize:11,padding:"2px 7px",borderRadius:99,background:(CORG[t.g]||"#888")+"22",color:CORG[t.g]||"#888",fontWeight:500}}>{t.g}</span>:"?"}</td><td style={{padding:"5px 8px",whiteSpace:"nowrap"}}>{l.data}</td><td style={{padding:"5px 8px",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.nome}</td><td style={{padding:"5px 8px",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(l.valorBruto)}</td><td style={{padding:"5px 8px",textAlign:"right",whiteSpace:"nowrap"}}>{l.irrf>0?fmt(l.irrf):<span style={{color:"var(--tx3)"}}>—</span>}</td><td style={{padding:"5px 8px",textAlign:"center",fontSize:11,color:t?.bM?"var(--tx-ok)":"var(--tx3)"}}>{t?.bM?"Sim":"Não"}</td><td style={{padding:"5px 8px"}}><button onClick={()=>onUpdate(lans.filter(x=>x.id!==l.id))} style={{background:"none",border:"none",cursor:"pointer",color:"var(--tx-danger)",fontSize:13,padding:0}}>✕</button></td></tr>);})}</tbody></table></div></div>}
+    </div>
+  );
+}
+
+/* ── ESPELHO FISCAL ─────────────────────────── */
+function EspelhoFiscal({lans,onUpdate,pjData,onUpdatePjData,clienteNome}){
+  const [sub,setSub]=useState("resumo"),[editCnpj,setEditCnpj]=useState(null),[ef,setEf]=useState({irpjCsll:"",lucroContabil:"",tipoPJ:"geral"});
+  const m6A=useMemo(()=>calcMotor6A(lans),[lans]);
+  const trib=useMemo(()=>calcTrib(lans,m6A,pjData),[lans,m6A,pjData]);
+  const pct=Math.min(100,(trib.bM/TRC.a16.lf)*100);
+  function startEdit(r){setEditCnpj(r.cnpj);setEf({irpjCsll:r.pd.irpjCsll??'',lucroContabil:r.pd.lucroContabil??'',tipoPJ:r.pd.tipoPJ||"geral"});}
+  function salvarPJ(cnpj){onUpdatePjData({...pjData,[cnpj]:{irpjCsll:ef.irpjCsll!==''?parseFloat(ef.irpjCsll):null,lucroContabil:ef.lucroContabil!==''?parseFloat(ef.lucroContabil):null,tipoPJ:ef.tipoPJ}});setEditCnpj(null);}
+  const tabs=[{id:"resumo",l:"Resumo"},{id:"grafico",l:"Evolução mensal"},{id:"lancamentos",l:"Lançamentos"},{id:"fluxo",l:"Fluxo §§ 3–6"},{id:"redutor",l:`Redutor 16-B${trib.incV>0?" ✓":trib.reds?.some(r=>r.pend)?" ⚠":""}`}];
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{fontSize:12,fontWeight:500}}>Espelho fiscal — {clienteNome}</div>
+        <span style={{fontSize:11,fontFamily:"monospace",color:"var(--tx3)",background:"var(--bg2)",padding:"2px 8px",borderRadius:6}}>{TRC.v} · {TRC.norm}</span>
+      </div>
+      <div style={{fontSize:12,color:"var(--tx3)",marginBottom:12}}>Cenário projetado · impacto fiscal estimado · pendências que podem alterar o resultado</div>
+      <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>{tabs.map(t=><button key={t.id} onClick={()=>setSub(t.id)} style={{padding:"5px 13px",borderRadius:8,fontSize:12,cursor:"pointer",background:sub===t.id?"var(--bg-info)":"transparent",color:sub===t.id?"var(--tx-info)":"var(--tx2)",border:`0.5px solid ${sub===t.id?"var(--br-info)":"var(--br)"}`,fontWeight:sub===t.id?500:400}}>{t.l}</button>)}</div>
+      {sub==="resumo"&&<div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}><MC2 label="Rendimentos brutos" value={fmt(trib.bB)}/><MC2 label="Base trib. mínima" value={fmt(trib.bM)}/><MC2 label="Trib. mínima bruta" value={fmt(trib.tMB)}/><MC2 label="Redutor 16-B" value={fmt(trib.incV)} ok={trib.incV>0}/><MC2 label="Resultado § 5º" value={fmt(trib.r5)} danger={trib.r5>0} ok={trib.r5<0}/><MC2 label="Saldo DAA est." value={fmt(trib.sDF)} danger={trib.sDF>0} ok={trib.sDF<0}/></div>
+        <div style={C}><div style={{fontSize:11,color:"var(--tx3)",marginBottom:6}}>Termômetro da base mínima</div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{flex:1,height:8,borderRadius:99,background:"var(--bg2)",overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:trib.bM>=TRC.a16.lf?"#E24B4A":trib.bM>TRC.a16.lz?"#EF9F27":"#1D9E75",transition:"width .4s"}}/></div><span style={{fontSize:13,fontWeight:500,minWidth:44}}>{fmtP(trib.aliq)}</span></div><div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"var(--tx3)",marginTop:3}}><span>R$0</span><span>R$600k</span><span>R$1,2M</span></div></div>
+        {trib.pend.length>0&&<div style={{...C,borderColor:"var(--br-warn)",background:"var(--bg-warn)"}}><div style={{fontSize:12,fontWeight:500,color:"var(--tx-warn)",marginBottom:6}}>Pendências ({trib.pend.length})</div>{trib.pend.map((p,i)=><div key={i} style={{fontSize:12,color:"var(--tx-warn)",marginBottom:2}}>· {p.nome}: {p.m}</div>)}</div>}
+        {lans.length===0&&<div style={{...C,textAlign:"center",padding:24,background:"var(--bg2)"}}><div style={s0}>Nenhum lançamento cadastrado.</div><button onClick={()=>setSub("lancamentos")} style={{marginTop:8,fontSize:12,padding:"5px 14px",borderRadius:8,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer",display:"block",margin:"8px auto 0"}}>Adicionar primeiro lançamento</button></div>}
+      </div>}
+      {sub==="grafico"&&<GraficoMensal lans={lans}/>}
+      {sub==="lancamentos"&&<LanEditor lans={lans} onUpdate={onUpdate}/>}
+      {sub==="fluxo"&&<div>
+        <div style={C}><RL l="Base bruta de rendimentos" v={fmt(trib.bB)}/>{trib.excl.map((e,i)=><RL key={i} l={`(-) ${e.m}`} v={`- ${fmt(e.v)}`} ind/>)}<RL l={`= Base da tributação mínima — ${trib.excl.length} exclusão(ões)`} v={fmt(trib.bM)} bold/><RL l={`Alíquota — ${trib.bM>=TRC.a16.lf?"flat 10%":trib.bM<=TRC.a16.lz?"0%":"linear"}`} v={fmtP(trib.aliq)}/><RL l="= Tributação mínima bruta (§ 2º)" v={fmt(trib.tMB)} bold/></div>
+        <div style={C}><div style={{fontSize:11,color:"var(--tx3)",marginBottom:4}}>Deduções § 3º</div><RL l="Inc. I — IRRF progressivo retido (estimado)*" v={`- ${fmt(trib.incI)}`} ind/><RL l="Inc. II — IRRF exclusivo/definitivo na base" v={`- ${fmt(trib.incII)}`} ind/><RL l="Inc. III — IR Lei 14.754/2023" v={`- ${fmt(trib.incIII)}`} ind/><RL l={`Inc. V — Redutor Art. 16-B${trib.incV>0?" (aplicado)":trib.reds?.some(r=>r.pend)?" (⚠ pendente)":" (não aplicável)"}`} v={`- ${fmt(trib.incV)}`} ind ok={trib.incV>0}/><RL l={`§ 4º — ${trib.p4?"negativo → zero (continua ao § 5º)":"positivo, sem alteração"}`} v={fmt(trib.r4)} bold/></div>
+        <div style={C}><RL l="§ 5º — (-) IRRF antecipado Art. 6º-A" v={`- ${fmt(trib.i6A)}`} ind/><RL l="= Resultado § 5º" v={fmt(trib.r5)} bold ok={trib.r5<0} dg={trib.r5>0}/><RL l="§ 6º — Saldo DAA final estimado" v={fmt(trib.sDF)} bold ok={trib.sDF<0} dg={trib.sDF>0}/><div style={{fontSize:11,color:"var(--tx3)",marginTop:8}}>* Inc. I correto = IRPF DEVIDO na tabela progressiva anual. Diferença estimada pode variar.</div></div>
+      </div>}
+      {sub==="redutor"&&<div>
+        {!(trib.reds?.length)?<div style={{...C,textAlign:"center",padding:28,color:"var(--tx3)"}}>Adicione DIV_FECHADA ou DIV_ABERTA para habilitar o Redutor Art. 16-B.</div>
+        :trib.reds.map(r=>(
+          <div key={r.cnpj} style={{...C,borderLeft:`3px solid ${r.pend?"var(--br-warn)":r.red>0?"#1D9E75":"var(--br)"}`,borderRadius:"0 12px 12px 0"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+              <div><div style={{fontSize:14,fontWeight:500}}>{r.nome}</div><div style={{fontSize:11,color:"var(--tx3)",marginTop:2}}>CNPJ: {r.cnpj} · Dividendos: {fmt(r.dividendos)}</div></div>
+              <div style={{display:"flex",gap:6}}><span style={{fontSize:11,padding:"2px 10px",borderRadius:99,background:r.pend?"var(--bg-warn)":r.red>0?"var(--bg-ok)":"var(--bg2)",color:r.pend?"var(--tx-warn)":r.red>0?"var(--tx-ok)":"var(--tx2)",fontWeight:500}}>{r.pend?"Pendente":r.red>0?"Redutor aplicado":"Sem excesso"}</span><button onClick={()=>editCnpj===r.cnpj?setEditCnpj(null):startEdit(r)} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:"0.5px solid var(--br2)",background:"transparent",color:"var(--tx2)",cursor:"pointer"}}>{editCnpj===r.cnpj?"Cancelar":"Editar PJ"}</button></div>
+            </div>
+            {editCnpj===r.cnpj&&<div style={{background:"var(--bg2)",borderRadius:10,padding:14,marginBottom:12}}><div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>{[{l:"IRPJ + CSLL (R$)",k:"irpjCsll"},{l:"Lucro contábil (R$)",k:"lucroContabil"}].map(fld=><div key={fld.k} style={{display:"flex",flexDirection:"column",gap:4,flex:1,minWidth:150}}><label style={{fontSize:11,color:"var(--tx3)"}}>{fld.l}</label><input type="number" value={ef[fld.k]} onChange={e=>setEf(p=>({...p,[fld.k]:e.target.value}))} style={{...i0,width:"100%"}}/></div>)}<div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:11,color:"var(--tx3)"}}>Tipo da PJ</label><select value={ef.tipoPJ} onChange={e=>setEf(p=>({...p,tipoPJ:e.target.value}))} style={i0}>{Object.entries(TRC.a16b.tipoLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div></div><button onClick={()=>salvarPJ(r.cnpj)} style={{padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:500,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer"}}>Salvar</button></div>}
+            {!r.pend&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8}}>{[{l:"Alíq. efetiva PJ",v:fmtP(r.aPJ)},{l:"Alíq. efetiva PF",v:fmtP(r.aPF)},{l:"Soma alíquotas",v:fmtP(r.soma)},{l:"Limite nominal",v:fmtP(r.lim)},{l:"Redutor (Inc. V)",v:fmt(r.red),ok:r.red>0}].map(m=><div key={m.l} style={{background:"var(--bg2)",borderRadius:8,padding:"8px 12px"}}><div style={{fontSize:10,color:"var(--tx3)",marginBottom:2}}>{m.l}</div><div style={{fontSize:13,fontWeight:500,color:m.ok?"var(--tx-ok)":"var(--tx)"}}>{m.v}</div></div>)}</div>}
+            {r.pend&&<div style={{padding:"10px 14px",background:"var(--bg-warn)",borderRadius:8,fontSize:12,color:"var(--tx-warn)"}}>Informe IRPJ+CSLL e Lucro Contábil. Art. 16-B § 4º: exige demonstrações financeiras.</div>}
+          </div>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
+/* ── SIMULADOR ──────────────────────────────── */
+function Simulador({baseLans,cens,onUpdateCens,clienteNome,pjData}){
+  const [modo,setModo]=useState("list"),[selCen,setSelCen]=useState(null),[bNome,setBNome]=useState(""),[bDesc,setBDesc]=useState(""),[bLans,setBLans]=useState([]),[editId,setEditId]=useState(null);
+  const bT=useMemo(()=>fullCalc(baseLans,pjData),[baseLans,pjData]);
+  function openBuilder(cen=null){setEditId(cen?cen.id:null);setBNome(cen?cen.nome:"");setBDesc(cen?cen.desc:"");setBLans(cen?[...cen.lans]:baseLans.map(l=>({...l,id:"c_"+l.id})));setModo("builder");}
+  function salvar(){if(!bNome)return;const novo={id:editId||"s_"+Date.now(),nome:bNome,desc:bDesc,criadoEm:TODAY,lans:bLans};onUpdateCens(editId?cens.map(c=>c.id===editId?novo:c):[...cens,novo]);setModo("list");}
+  if(modo==="builder")return(<div><button onClick={()=>setModo("list")} style={{fontSize:12,color:"var(--tx2)",border:"none",background:"none",cursor:"pointer",marginBottom:14,padding:0}}>← Cancelar</button><div style={{fontSize:14,fontWeight:500,marginBottom:14}}>{editId?"Editar":"Novo"} cenário</div><div style={C}><div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}><div style={{display:"flex",flexDirection:"column",gap:4,flex:1}}><label style={{fontSize:11,color:"var(--tx3)"}}>Nome *</label><input value={bNome} onChange={e=>setBNome(e.target.value)} style={{...i0,width:"100%"}}/></div><div style={{display:"flex",flexDirection:"column",gap:4,flex:2}}><label style={{fontSize:11,color:"var(--tx3)"}}>Descrição / premissas</label><input value={bDesc} onChange={e=>setBDesc(e.target.value)} style={{...i0,width:"100%"}}/></div></div><button onClick={salvar} disabled={!bNome} style={{padding:"7px 18px",borderRadius:8,fontSize:13,fontWeight:500,background:bNome?"var(--bg-info)":"var(--bg2)",color:bNome?"var(--tx-info)":"var(--tx3)",border:`0.5px solid ${bNome?"var(--br-info)":"var(--br)"}`,cursor:bNome?"pointer":"default"}}>{editId?"Salvar":"Criar cenário"}</button></div><LanEditor lans={bLans} onUpdate={setBLans}/></div>);
+  if(modo==="compare"&&selCen){
+    const cT=fullCalc(selCen.lans,pjData);
+    const rows=[{l:"Rendimentos brutos",bv:bT.bB,cv:cT.bB},{l:"Base trib. mínima",bv:bT.bM,cv:cT.bM},{l:"Alíquota",bv:bT.aliq,cv:cT.aliq,pct:true,lB:true},{l:"Trib. mínima bruta",bv:bT.tMB,cv:cT.tMB,lB:true},{l:"Redutor 16-B",bv:bT.incV,cv:cT.incV,lB:true},{l:"IRRF Art. 6º-A",bv:bT.i6A,cv:cT.i6A,lB:true,dest:true},{l:"Saldo DAA estimado",bv:bT.sDF,cv:cT.sDF,lB:true,dest:true}];
+    function dif(bv,cv,pct,lB){const d=cv-bv;if(Math.abs(d)<0.01)return{txt:"—",cor:"var(--tx3)"};return{txt:pct?(d>=0?"+":"")+((d)*100).toFixed(2)+"p.p.":(d>=0?"+":"")+fmt(cv-bv),cor:lB?(d<0?"var(--tx-ok)":"var(--tx-danger)"):"var(--tx)"};}
+    return(<div><button onClick={()=>setModo("list")} style={{fontSize:12,color:"var(--tx2)",border:"none",background:"none",cursor:"pointer",marginBottom:14,padding:0}}>← Voltar</button><div style={{fontSize:14,fontWeight:500,marginBottom:12}}>Cenário Base × {selCen.nome}</div><div style={{...C,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{borderBottom:"0.5px solid var(--br)"}}>{["Métrica","Base","Cenário","Diferença est."].map((h,i)=><th key={i} style={{textAlign:i===0?"left":"right",padding:"8px 12px",fontWeight:500,fontSize:11,color:"var(--tx3)"}}>{h}</th>)}</tr></thead><tbody>{rows.map((r,i)=>{const d=dif(r.bv,r.cv,r.pct,r.lB);return <tr key={i} style={{borderBottom:"0.5px solid var(--br)",background:r.dest?"var(--bg2)":"transparent"}}><td style={{padding:"8px 12px",fontWeight:r.dest?500:400}}>{r.l}</td><td style={{padding:"8px 12px",textAlign:"right",fontFamily:"monospace"}}>{r.pct?fmtP(r.bv):fmt(r.bv)}</td><td style={{padding:"8px 12px",textAlign:"right",fontFamily:"monospace"}}>{r.pct?fmtP(r.cv):fmt(r.cv)}</td><td style={{padding:"8px 12px",textAlign:"right",fontWeight:500,color:d.cor,fontFamily:"monospace"}}>{d.txt}</td></tr>;})}</tbody></table></div>{bT.bM===cT.bM&&<div style={{...C,background:"var(--bg-info)",borderColor:"var(--br-info)"}}><div style={{fontSize:12,fontWeight:500,color:"var(--tx-info)",marginBottom:4}}>Carga anual estimada idêntica</div><div style={{fontSize:12,color:"var(--tx-info)"}}>Diferença de IRRF Art. 6-A é apenas de fluxo de caixa, sem benefício fiscal anual real.</div></div>}<div style={{...C,borderColor:"var(--br-danger)",background:"var(--bg-danger)"}}><div style={{fontSize:12,color:"var(--tx-danger)"}}>Diferença estimada · não constitui recomendação de investimento · pendências podem alterar o resultado.</div></div></div>);
+  }
+  return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div><div style={{fontSize:14,fontWeight:500}}>Simulador de cenários — {clienteNome}</div><div style={{fontSize:12,color:"var(--tx3)",marginTop:2}}>Diferenças estimadas · sem prescrição de conduta</div></div><button onClick={()=>openBuilder()} style={{padding:"6px 16px",borderRadius:8,fontSize:13,fontWeight:500,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer",flexShrink:0}}>+ Novo cenário</button></div>
+    <div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:10}}>Cenário base</div><div style={{display:"flex",gap:10,flexWrap:"wrap"}}><MC2 label="Base mínima" value={fmt(bT.bM)}/><MC2 label="IRRF Art. 6-A" value={fmt(bT.i6A)} danger={bT.i6A>0}/><MC2 label="Redutor 16-B" value={fmt(bT.incV)} ok={bT.incV>0}/><MC2 label="Saldo DAA est." value={fmt(bT.sDF)} danger={bT.sDF>0} ok={bT.sDF<0}/></div></div>
+    {cens.length===0&&<div style={{...C,textAlign:"center",padding:28,background:"var(--bg2)"}}><div style={s0}>Nenhum cenário salvo. Crie para explorar o impacto fiscal estimado.</div></div>}
+    {cens.map(cen=>{const cT=fullCalc(cen.lans,pjData),diffI=bT.i6A-cT.i6A,netSame=bT.bM===cT.bM;return(<div key={cen.id} style={C}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><div><div style={{fontSize:13,fontWeight:500}}>{cen.nome}</div>{cen.desc&&<div style={{fontSize:12,color:"var(--tx3)",marginTop:2}}>{cen.desc}</div>}</div><div style={{display:"flex",gap:6,flexShrink:0,marginLeft:10}}><button onClick={()=>{setSelCen(cen);setModo("compare");}} style={{padding:"5px 12px",borderRadius:8,fontSize:12,fontWeight:500,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer"}}>Comparar</button><button onClick={()=>openBuilder(cen)} style={{padding:"5px 10px",borderRadius:8,fontSize:12,background:"transparent",color:"var(--tx2)",border:"0.5px solid var(--br)",cursor:"pointer"}}>Editar</button><button onClick={()=>onUpdateCens(cens.filter(c=>c.id!==cen.id))} style={{padding:"5px 8px",borderRadius:8,fontSize:12,background:"transparent",color:"var(--tx-danger)",border:"0.5px solid var(--br-danger)",cursor:"pointer"}}>✕</button></div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><MC2 label="IRRF Art. 6-A" value={fmt(cT.i6A)} danger={cT.i6A>0}/><MC2 label="Saldo DAA est." value={fmt(cT.sDF)} danger={cT.sDF>0} ok={cT.sDF<0}/><div style={{background:netSame?"var(--bg-info)":"var(--bg-warn)",borderRadius:8,padding:"10px 14px"}}><div style={{fontSize:11,marginBottom:3,color:netSame?"var(--tx-info)":"var(--tx-warn)"}}>Δ IRRF Art. 6-A</div><div style={{fontSize:15,fontWeight:500,color:diffI>0?"var(--tx-ok)":diffI<0?"var(--tx-danger)":"var(--tx3)"}}>{diffI===0?"Igual":fmt(Math.abs(diffI))+(diffI>0?" menos":" mais")}</div></div><div style={{background:netSame?"var(--bg-info)":"var(--bg-warn)",borderRadius:8,padding:"10px 14px"}}><div style={{fontSize:11,marginBottom:3,color:netSame?"var(--tx-info)":"var(--tx-warn)"}}>Impacto anual</div><div style={{fontSize:15,fontWeight:500,color:netSame?"var(--tx-info)":"var(--tx-warn)"}}>{netSame?"Nulo (só fluxo)":"Verificar"}</div></div></div></div>);})}
+  </div>);
+}
+
+/* ── MODO APRESENTAÇÃO ──────────────────────── */
+function ModoApresentacao({cli,consultor,onSair}){
+  const [slide,setSlide]=useState(0);
+  const m6A=useMemo(()=>calcMotor6A(cli.lans||[]),[cli.lans]);
+  const trib=useMemo(()=>calcTrib(cli.lans||[],m6A,cli.pjData||{}),[cli.lans,m6A,cli.pjData]);
+  const hasCens=(cli.cens||[]).length>0,hasPend=trib.pend.length>0;
+  const SLIDES=useMemo(()=>[{id:"capa",title:"Apresentação"},{id:"resumo",title:"Resumo executivo"},...(hasCens?[{id:"cenarios",title:"Cenários"}]:[]),...(hasPend?[{id:"pendencias",title:"Pendências"}]:[]),{id:"disclaimer",title:"Premissas legais"}],[hasCens,hasPend]);
+  const nS=SLIDES.length,cur=SLIDES[slide];
+  const pct=Math.min(100,(trib.bM/TRC.a16.lf)*100);
+  const cor=trib.bM>=TRC.a16.lf?"#E24B4A":trib.bM>TRC.a16.lz?"#EF9F27":"#1D9E75";
+  useEffect(()=>{const k=e=>{if(e.key==="ArrowRight"||e.key==="ArrowDown")setSlide(s=>Math.min(nS-1,s+1));if(e.key==="ArrowLeft"||e.key==="ArrowUp")setSlide(s=>Math.max(0,s-1));if(e.key==="Escape")onSair();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[nS,onSair]);
+  const navBtn=(txt,fn,dis)=><button onClick={fn} disabled={dis} style={{padding:"7px 16px",borderRadius:8,fontSize:13,cursor:dis?"default":"pointer",background:dis?"transparent":"#f3f3ef",color:dis?"#d3d1c7":"#1a1a1a",border:`0.5px solid ${dis?"#ebebeb":"rgba(0,0,0,0.14)"}`}}>{txt}</button>;
+  return(
+    <div style={{minHeight:"100vh",background:"#fff",display:"flex",flexDirection:"column",fontFamily:"var(--font)",color:"#1a1a1a"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 28px",borderBottom:"0.5px solid rgba(0,0,0,0.08)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:13,fontWeight:500}}>Espelho Fiscal 2026</span><span style={{fontSize:12,color:"#888780"}}>{cli.nome}</span></div>
+        <div style={{display:"flex",gap:8}}><span style={{fontSize:11,color:"#b4b2a9"}}>{cur.title} · {slide+1}/{nS}</span><button onClick={()=>window.print()} style={{padding:"6px 14px",borderRadius:8,fontSize:12,cursor:"pointer",background:"#e6f1fb",color:"#0c447c",border:"0.5px solid #85b7eb",fontWeight:500}}>Imprimir / PDF</button><button onClick={onSair} style={{padding:"6px 14px",borderRadius:8,fontSize:12,cursor:"pointer",background:"transparent",color:"#888780",border:"0.5px solid rgba(0,0,0,0.12)"}}>← Sair</button></div>
+      </div>
+      <div style={{height:3,background:"#f0ede8"}}><div style={{height:"100%",width:`${((slide+1)/nS)*100}%`,background:"#185FA5",transition:"width .35s"}}/></div>
+      <div style={{flex:1,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 28px",overflowY:"auto"}}>
+        <div style={{width:"100%",maxWidth:860}}>
+          {cur.id==="capa"&&<div style={{textAlign:"center",padding:"20px 20px 40px"}}><div style={{fontSize:44,fontWeight:500,marginBottom:12,color:"#1a1a1a",lineHeight:1.1}}>{cli.nome}</div><div style={{fontSize:16,color:"#888780",marginBottom:40}}>Lei 15.270/2025 — Tributação mínima anual e IRRF sobre dividendos</div><div style={{display:"flex",justifyContent:"center",border:"0.5px solid rgba(0,0,0,0.08)",borderRadius:12,overflow:"hidden",maxWidth:500,margin:"0 auto 32px"}}>{[{l:"Consultor",v:consultor},{l:"Data",v:fmtD(TODAY)},{l:"Versão",v:"2026.01"},{l:"Norma",v:TRC.norm}].map((x,i)=><div key={x.l} style={{flex:1,minWidth:110,padding:"14px 10px",textAlign:"center",borderRight:i<3?"0.5px solid rgba(0,0,0,0.08)":"none",background:i%2===0?"#fafaf8":"#fff"}}><div style={{fontSize:10,letterSpacing:"0.06em",textTransform:"uppercase",color:"#888780",marginBottom:6}}>{x.l}</div><div style={{fontSize:12,fontWeight:500}}>{x.v}</div></div>)}</div><div style={{padding:"10px 20px",background:"#f8f8f6",borderRadius:8,display:"inline-block",fontSize:11,color:"#888780"}}>Cenário projetado · Impacto fiscal estimado · Pendências que podem alterar o resultado</div></div>}
+          {cur.id==="resumo"&&<div><div style={{fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",color:"#888780",marginBottom:14}}>Resumo executivo · impacto fiscal estimado</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:12}}><div><div style={{fontSize:36,fontWeight:500,color:"#1a1a1a",lineHeight:1}}>{fmt(trib.bM)}</div><div style={{fontSize:12,color:"#888780",marginTop:4}}>Base da tributação mínima</div></div><div style={{textAlign:"right"}}><div style={{fontSize:36,fontWeight:500,color:cor,lineHeight:1}}>{fmtP(trib.aliq)}</div><div style={{fontSize:12,color:"#888780",marginTop:4}}>Alíquota aplicável</div></div></div><div style={{height:14,borderRadius:99,background:"#f0ede8",overflow:"hidden",marginBottom:8}}><div style={{height:"100%",borderRadius:99,width:`${pct}%`,background:cor}}/></div><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#888780",marginBottom:20}}><span>R$0</span><span>R$600k</span><span>R$1,2M</span></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>{[{l:"Rendimentos brutos",v:fmt(trib.bB),sub:"Total do ano"},{l:"Trib. mínima bruta",v:fmt(trib.tMB),sub:"Antes das deduções"},{l:"Redutor Art. 16-B",v:fmt(trib.incV),sub:trib.incV>0?"Aplicado":"Não aplicável"},{l:"IRRF Art. 6º-A",v:fmt(trib.i6A),sub:"Antecipação mensal"},{l:"Saldo DAA estimado",v:fmt(trib.sDF),sub:trib.sDF<0?"Estimativa de restituição":"Estimativa a pagar",ok:trib.sDF<0,dg:trib.sDF>0}].map(m=><div key={m.l} style={{background:"#f8f8f6",borderRadius:10,padding:"16px 14px",border:"0.5px solid rgba(0,0,0,0.06)"}}><div style={{fontSize:11,color:"#888780",marginBottom:6}}>{m.l}</div><div style={{fontSize:22,fontWeight:500,color:m.dg?"#A32D2D":m.ok?"#27500a":"#1a1a1a",lineHeight:1}}>{m.v}</div><div style={{fontSize:11,color:"#888780",marginTop:6}}>{m.sub}</div></div>)}</div></div>}
+          {cur.id==="cenarios"&&<div><div style={{fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",color:"#888780",marginBottom:14}}>Cenários comparados</div>{(cli.cens||[]).map(cen=>{const cT=fullCalc(cen.lans,cli.pjData||{});return(<div key={cen.id} style={{marginBottom:16,padding:"14px 16px",background:"#f8f8f6",borderRadius:10,border:"0.5px solid rgba(0,0,0,0.06)"}}><div style={{fontSize:13,fontWeight:500,marginBottom:8}}>{cen.nome}</div>{cen.desc&&<div style={{fontSize:12,color:"#888780",marginBottom:10}}>{cen.desc}</div>}<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8}}>{[{l:"IRRF Art. 6-A",bv:trib.i6A,cv:cT.i6A},{l:"Trib. mín. bruta",bv:trib.tMB,cv:cT.tMB},{l:"Saldo DAA est.",bv:trib.sDF,cv:cT.sDF}].map(m=>{const d=m.cv-m.bv;return(<div key={m.l} style={{background:"#fff",borderRadius:8,padding:"10px 12px",border:"0.5px solid rgba(0,0,0,0.07)"}}><div style={{fontSize:10,color:"#888780",marginBottom:4}}>{m.l}</div><div style={{fontSize:14,fontWeight:500}}>{fmt(m.cv)}</div>{Math.abs(d)>1&&<div style={{fontSize:11,color:d<0?"#27500a":"#791f1f",marginTop:2}}>{d<0?"▼":"▲"} {fmt(Math.abs(d))}</div>}</div>);})}</div></div>);})} </div>}
+          {cur.id==="pendencias"&&<div><div style={{fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",color:"#888780",marginBottom:14}}>Pendências</div>{trib.pend.map((p,i)=><div key={i} style={{display:"flex",gap:14,padding:"16px",background:"#faeeda",borderRadius:10,marginBottom:10,border:"0.5px solid #fac775"}}><div style={{width:28,height:28,borderRadius:"50%",background:"#fac775",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:500,color:"#633806",flexShrink:0}}>{i+1}</div><div><div style={{fontSize:14,fontWeight:500,color:"#633806",marginBottom:4}}>{p.nome}</div><div style={{fontSize:12,color:"#854f0b"}}>{p.m}</div></div></div>)}</div>}
+          {cur.id==="disclaimer"&&<div style={{maxWidth:680,margin:"0 auto"}}><div style={{fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",color:"#888780",marginBottom:14}}>Premissas e disclaimer legal</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:20}}>{[{l:"Cliente",v:cli.nome},{l:"Consultor",v:consultor},{l:"Data",v:fmtD(TODAY)},{l:"Versão",v:"2026.01"},{l:"Norma",v:TRC.norm},{l:"Vigência",v:"01/01/2026"}].map(x=><div key={x.l} style={{padding:"12px 14px",background:"#f8f8f6",borderRadius:8}}><div style={{fontSize:10,letterSpacing:"0.05em",textTransform:"uppercase",color:"#888780",marginBottom:5}}>{x.l}</div><div style={{fontSize:13,fontWeight:500}}>{x.v}</div></div>)}</div><div style={{padding:"16px",background:"#fcebeb",borderRadius:10,border:"0.5px solid #f09595"}}><div style={{fontSize:12,fontWeight:500,color:"#791f1f",marginBottom:8}}>Este material não constitui:</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>{["Recomendação de investimento","Prescrição de conduta tributária","Consultoria jurídica ou contábil","Aconselhamento financeiro definitivo"].map(t=><div key={t} style={{fontSize:12,color:"#A32D2D",display:"flex",gap:6}}>× {t}</div>)}</div></div></div>}
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 28px",borderTop:"0.5px solid rgba(0,0,0,0.08)"}}>
+        <div style={{display:"flex",gap:6}}>{SLIDES.map((_,i)=><div key={i} onClick={()=>setSlide(i)} style={{width:i===slide?22:7,height:7,borderRadius:99,background:i===slide?"#185FA5":"#d3d1c7",cursor:"pointer",transition:"all .25s"}}/>)}</div>
+        <div style={{fontSize:11,color:"#b4b2a9",fontStyle:"italic"}}>← → navegar · ESC sair</div>
+        <div style={{display:"flex",gap:6}}>{navBtn("← Anterior",()=>setSlide(s=>Math.max(0,s-1)),slide===0)}{navBtn("Próxima →",()=>setSlide(s=>Math.min(nS-1,s+1)),slide===nS-1)}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SIDEBAR ────────────────────────────────── */
+function Sidebar({user,view,setView,onLogout,saveStatus}){
+  return(
+    <div style={{width:210,minHeight:"100vh",background:"var(--bg)",borderRight:"0.5px solid var(--br)",display:"flex",flexDirection:"column",flexShrink:0}}>
+      <div style={{padding:"18px 16px 12px",borderBottom:"0.5px solid var(--br)"}}><div style={{fontSize:14,fontWeight:500}}>Espelho Fiscal</div><div style={{fontSize:11,color:"var(--tx3)"}}>Lei 15.270/2025 · v2026.01</div></div>
+      <nav style={{flex:1,padding:"10px 8px"}}>
+        {[{id:"dashboard",l:"Visão geral"},{id:"clientes",l:"Clientes"},{id:"inteligencia",l:"Inteligência"}].map(n=><button key={n.id} onClick={()=>setView(n.id)} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 12px",borderRadius:8,fontSize:13,border:"none",cursor:"pointer",marginBottom:2,background:view===n.id?"var(--bg-info)":"transparent",color:view===n.id?"var(--tx-info)":"var(--tx2)",fontWeight:view===n.id?500:400}}>{n.l}</button>)}
+      </nav>
+      <div style={{padding:"12px 16px",borderTop:"0.5px solid var(--br)"}}>
+        {saveStatus&&<div style={{fontSize:11,color:saveStatus==="ok"?"var(--tx-ok)":"var(--tx-warn)",marginBottom:8,textAlign:"center"}}>{saveStatus==="ok"?"✓ Dados salvos":"Salvando..."}</div>}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <div style={{width:32,height:32,borderRadius:"50%",background:"var(--bg-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:500,color:"var(--tx-info)",flexShrink:0}}>{user.avatar}</div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.nome}</div><div style={{fontSize:11,color:"var(--tx3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div></div>
+        </div>
+        <button onClick={onLogout} style={{width:"100%",padding:"5px",borderRadius:6,fontSize:12,border:"0.5px solid var(--br)",background:"transparent",color:"var(--tx2)",cursor:"pointer"}}>Sair</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── DASHBOARD ──────────────────────────────── */
+function Dashboard({clientes,onSel}){
+  const at=clientes.filter(c=>c.status!=="encerrado"),fups=clientes.filter(c=>c.proxFup&&c.proxFup<=TODAY&&c.status!=="encerrado"),als=clientes.filter(c=>alertNivel(c.rend)==="danger"||alertNivel(c.rend)==="warning"),pc=PIPE.reduce((a,s)=>{a[s]=clientes.filter(c=>c.status===s).length;return a},{});
+  return(
+    <div style={{padding:"24px 28px",flex:1,overflowY:"auto"}}>
+      <div style={{fontSize:17,fontWeight:500,marginBottom:2}}>Visão geral da carteira</div>
+      <div style={{fontSize:12,color:"var(--tx3)",marginBottom:18}}>Ano-calendário 2026 · {at.length} clientes ativos</div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}><MC2 label="Clientes ativos" value={at.length}/><MC2 label="Follow-ups em atraso" value={fups.length} danger={fups.length>0}/><MC2 label="Alertas fiscais" value={als.length} danger={als.length>0}/><MC2 label="Cenários criados" value={clientes.reduce((s,c)=>s+(c.cens||[]).length,0)}/></div>
+      <div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:10}}>Pipeline</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{PIPE.map(s=>{const c=SCFG[s];return <div key={s} style={{flex:1,minWidth:65,textAlign:"center",padding:"10px 6px",borderRadius:8,background:c.bg}}><div style={{fontSize:20,fontWeight:500,color:c.cor}}>{pc[s]||0}</div><div style={{fontSize:11,color:c.cor,marginTop:2}}>{c.label}</div></div>;})}</div></div>
+      {fups.length>0&&<div style={{...C,borderColor:"var(--br-warn)",background:"var(--bg-warn)"}}><div style={{fontSize:12,fontWeight:500,color:"var(--tx-warn)",marginBottom:8}}>Follow-ups em atraso ({fups.length})</div>{fups.map(c=><div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"0.5px solid var(--br-warn)"}}><div><div style={{fontSize:13,color:"var(--tx-warn)",fontWeight:500}}>{c.nome}</div><div style={{fontSize:11,color:"var(--tx-warn)"}}>{c.notaFup}</div></div><button onClick={()=>onSel(c.id)} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:"0.5px solid var(--br-warn)",background:"transparent",color:"var(--tx-warn)",cursor:"pointer"}}>Ver</button></div>)}</div>}
+      {als.length>0&&<div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:8}}>Alertas fiscais</div>{als.map(c=>{const nv=alertNivel(c.rend),cor=nv==="danger"?"var(--tx-danger)":"var(--tx-warn)",bg=nv==="danger"?"var(--bg-danger)":"var(--bg-warn)";return <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",borderRadius:8,background:bg,marginBottom:6}}><div><div style={{fontSize:13,color:cor,fontWeight:500}}>{c.nome}</div><div style={{fontSize:11,color:cor}}>{alertMsg(c.rend)} · {fmt(c.rend)}</div></div><button onClick={()=>onSel(c.id)} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:`0.5px solid ${cor}`,background:"transparent",color:cor,cursor:"pointer",flexShrink:0}}>Ver</button></div>;})}</div>}
+    </div>
+  );
+}
+
+/* ── LISTA CLIENTES ─────────────────────────── */
+function ClientesList({clientes,onSel,onNovo}){
+  const [busca,setBusca]=useState(""),[ft,setFt]=useState("todos");
+  const fil=useMemo(()=>clientes.filter(c=>(!busca||c.nome.toLowerCase().includes(busca.toLowerCase()))&&(ft==="todos"||c.status===ft)),[clientes,busca,ft]);
+  return(
+    <div style={{padding:"24px 28px",flex:1,overflowY:"auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{fontSize:17,fontWeight:500}}>Clientes</div><button onClick={onNovo} style={{padding:"6px 16px",borderRadius:8,fontSize:13,fontWeight:500,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer"}}>+ Novo cliente</button></div>
+      <div style={{fontSize:12,color:"var(--tx3)",marginBottom:14}}>{clientes.length} clientes · {clientes.filter(c=>c.status!=="encerrado").length} ativos</div>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome..." style={{...i0,flex:1,minWidth:180}}/><select value={ft} onChange={e=>setFt(e.target.value)} style={{...i0,width:"auto"}}><option value="todos">Todos</option>{PIPE.map(s=><option key={s} value={s}>{SCFG[s].label}</option>)}</select></div>
+      <div style={{background:"var(--bg)",border:"0.5px solid var(--br)",borderRadius:12,overflow:"hidden"}}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{borderBottom:"0.5px solid var(--br)"}}>{["Cliente","Status","Rend. est.","Alerta","Lanç.","Cenár.","Versões","Últ. apres.","Próx. FUP",""].map(h=><th key={h} style={{textAlign:"left",padding:"10px 12px",fontWeight:500,fontSize:12,color:"var(--tx3)",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {fil.map(c=>(
+                <tr key={c.id} style={{borderBottom:"0.5px solid var(--br)",cursor:"pointer"}} onClick={()=>onSel(c.id)}>
+                  <td style={{padding:"10px 12px"}}><div style={{fontWeight:500}}>{c.nome}</div><div style={{fontSize:11,color:"var(--tx3)"}}>{c.cpf}</div></td>
+                  <td style={{padding:"10px 12px"}}><Bdg st={c.status}/></td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap"}}>{fmt(c.rend)}</td>
+                  <td style={{padding:"10px 12px"}}>{alertNivel(c.rend)&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:4,fontWeight:500,background:alertNivel(c.rend)==="danger"?"var(--bg-danger)":"var(--bg-warn)",color:alertNivel(c.rend)==="danger"?"var(--tx-danger)":"var(--tx-warn)"}}>{alertNivel(c.rend)==="danger"?"Crítico":"Atenção"}</span>}</td>
+                  <td style={{padding:"10px 12px",textAlign:"center",color:"var(--tx3)"}}>{(c.lans||[]).length}</td>
+                  <td style={{padding:"10px 12px",textAlign:"center",color:"var(--tx3)"}}>{(c.cens||[]).length}</td>
+                  <td style={{padding:"10px 12px",textAlign:"center",color:"var(--tx3)"}}>{(c.snapshots||[]).length}</td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap",color:"var(--tx3)"}}>{fmtD(c.ultApres)}</td>
+                  <td style={{padding:"10px 12px",whiteSpace:"nowrap",color:c.proxFup&&c.proxFup<=TODAY?"var(--tx-danger)":"var(--tx2)"}}>{fmtD(c.proxFup)}</td>
+                  <td style={{padding:"10px 12px",color:"var(--tx-info)",fontSize:14}}>→</td>
+                </tr>
+              ))}
+              {fil.length===0&&<tr><td colSpan={10} style={{padding:"28px",textAlign:"center",color:"var(--tx3)"}}>Nenhum cliente encontrado.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── DETALHE DO CLIENTE ─────────────────────── */
+function ClienteDetail({cli,onBack,onUpd,onPresMode}){
+  const [tab,setTab]=useState("crm"),[editFup,setEditFup]=useState(false),[fupD,setFupD]=useState(cli.proxFup||""),[fupN,setFupN]=useState(cli.notaFup||""),[apD,setApD]=useState(TODAY),[apN,setApN]=useState(""),[notas,setNotas]=useState(cli.notas||"");
+  const nv=alertNivel(cli.rend);
+  function updLans(lans){const m=calcMotor6A(lans),t=calcTrib(lans,m,cli.pjData||{});onUpd({...cli,lans,pend:t.pend.length});}
+  function updCens(cens){onUpd({...cli,cens});}
+  function updPJ(pjData){onUpd({...cli,pjData});}
+  function addSnap(snap){onUpd({...cli,snapshots:[snap,...(cli.snapshots||[])]});}
+  function regApres(){if(!apN)return;const h=[{data:apD,tipo:"apres",nota:apN},...(cli.hist||[])];onUpd({...cli,hist:h,ultApres:apD,status:"apresentado"});setApN("");}
+  const numSnaps=(cli.snapshots||[]).length;
+  return(
+    <div style={{padding:"24px 28px",flex:1,overflowY:"auto"}}>
+      <button onClick={onBack} style={{fontSize:12,color:"var(--tx3)",border:"none",background:"none",cursor:"pointer",marginBottom:12,padding:0}}>← Voltar para clientes</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+        <div><div style={{fontSize:17,fontWeight:500}}>{cli.nome}</div><div style={{fontSize:12,color:"var(--tx3)"}}>{cli.cpf} · Cadastrado em {fmtD(cli.cadastro)}</div></div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <Bdg st={cli.status}/>
+          <select value={cli.status} onChange={e=>onUpd({...cli,status:e.target.value})} style={{fontSize:12,padding:"4px 8px",borderRadius:6,border:"0.5px solid var(--br2)",background:"var(--bg)",color:"var(--tx)"}}>{PIPE.map(s=><option key={s} value={s}>{SCFG[s].label}</option>)}</select>
+          <button onClick={()=>onPresMode(cli)} style={{padding:"6px 16px",borderRadius:8,fontSize:13,fontWeight:500,background:"#1a1a1a",color:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="9" rx="1" stroke="#fff" strokeWidth="1.2"/><path d="M5 10v2M9 10v2M4 12h6" stroke="#fff" strokeWidth="1.2" strokeLinecap="round"/></svg>Apresentação
+          </button>
+        </div>
+      </div>
+      {nv&&<div style={{padding:"8px 14px",borderRadius:8,marginBottom:14,background:nv==="danger"?"var(--bg-danger)":"var(--bg-warn)",border:`0.5px solid ${nv==="danger"?"var(--br-danger)":"var(--br-warn)"}`}}><div style={{fontSize:12,fontWeight:500,color:nv==="danger"?"var(--tx-danger)":"var(--tx-warn)"}}>{alertMsg(cli.rend)} · {fmt(cli.rend)}</div></div>}
+      <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
+        {[{id:"crm",l:"CRM"},{id:"espelho",l:"Espelho Fiscal"},{id:"cenarios",l:`Cenários (${(cli.cens||[]).length})`},{id:"auditoria",l:`Auditoria${numSnaps>0?" ("+numSnaps+")":""}`},{id:"historico",l:"Histórico"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"5px 14px",borderRadius:8,fontSize:13,cursor:"pointer",background:tab===t.id?"var(--bg-info)":"transparent",color:tab===t.id?"var(--tx-info)":"var(--tx2)",border:`0.5px solid ${tab===t.id?"var(--br-info)":"var(--br)"}`,fontWeight:tab===t.id?500:400}}>{t.l}</button>
+        ))}
+      </div>
+      {tab==="crm"&&<div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}><MC2 label="Rendimento estimado" value={fmt(cli.rend)}/><MC2 label="Lançamentos" value={(cli.lans||[]).length}/><MC2 label="Cenários" value={(cli.cens||[]).length}/><MC2 label="Versões salvas" value={numSnaps}/><MC2 label="Pendências" value={cli.pend||0} danger={(cli.pend||0)>0}/></div>
+        <div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:8}}>Pipeline</div><div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>{PIPE.map((s,i)=>{const c=SCFG[s],at=cli.status===s,pa=PIPE.indexOf(cli.status)>i;return(<React.Fragment key={s}><div style={{flex:1,minWidth:55,textAlign:"center",padding:"6px 4px",borderRadius:6,background:at?c.bg:pa?"var(--bg-ok)":"var(--bg2)"}}><div style={{fontSize:11,fontWeight:at?500:400,color:at?c.cor:pa?"var(--tx-ok)":"var(--tx3)"}}>{c.label}</div></div>{i<PIPE.length-1&&<div style={{fontSize:10,color:"var(--tx3)"}}>›</div>}</React.Fragment>);})}</div></div>
+        <div style={C}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontSize:12,fontWeight:500}}>Próximo follow-up</div><button onClick={()=>setEditFup(!editFup)} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:"0.5px solid var(--br2)",background:"transparent",color:"var(--tx2)",cursor:"pointer"}}>{editFup?"Cancelar":"Editar"}</button></div>
+          {!editFup&&<><div style={{fontSize:14,fontWeight:500,marginBottom:4}}>{fmtD(cli.proxFup)}</div><div style={s0}>{cli.notaFup||"Sem anotação."}</div></>}
+          {editFup&&<><div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}><div style={{display:"flex",flexDirection:"column",gap:3}}><label style={{fontSize:11,color:"var(--tx3)"}}>Data</label><input type="date" value={fupD} onChange={e=>setFupD(e.target.value)} style={{...i0,width:"auto"}}/></div><div style={{display:"flex",flexDirection:"column",gap:3,flex:1}}><label style={{fontSize:11,color:"var(--tx3)"}}>Nota</label><input value={fupN} onChange={e=>setFupN(e.target.value)} style={i0}/></div></div><button onClick={()=>{onUpd({...cli,proxFup:fupD,notaFup:fupN});setEditFup(false);}} style={{padding:"5px 16px",borderRadius:8,fontSize:13,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer",fontWeight:500}}>Salvar</button></>}
+        </div>
+        <div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:10}}>Registrar apresentação</div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}><div style={{display:"flex",flexDirection:"column",gap:3}}><label style={{fontSize:11,color:"var(--tx3)"}}>Data</label><input type="date" value={apD} onChange={e=>setApD(e.target.value)} style={{...i0,width:"auto"}}/></div><div style={{display:"flex",flexDirection:"column",gap:3,flex:1}}><label style={{fontSize:11,color:"var(--tx3)"}}>Observações</label><input value={apN} onChange={e=>setApN(e.target.value)} placeholder="Cenários, decisões, próximos passos..." style={i0}/></div></div><button onClick={regApres} style={{padding:"5px 16px",borderRadius:8,fontSize:13,background:"var(--bg-ok)",color:"var(--tx-ok)",border:"0.5px solid var(--br-ok)",cursor:"pointer",fontWeight:500}}>Registrar</button></div>
+        <div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:8}}>Notas do consultor</div><textarea value={notas} onChange={e=>setNotas(e.target.value)} rows={3} style={{width:"100%",fontSize:13,padding:"8px",borderRadius:8,border:"0.5px solid var(--br2)",background:"var(--bg2)",color:"var(--tx)",resize:"vertical",fontFamily:"var(--font)"}}/><button onClick={()=>onUpd({...cli,notas})} style={{marginTop:8,padding:"5px 16px",borderRadius:8,fontSize:13,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer"}}>Salvar notas</button></div>
+      </div>}
+      {tab==="espelho"   && <EspelhoFiscal lans={cli.lans||[]} onUpdate={updLans} pjData={cli.pjData||{}} onUpdatePjData={updPJ} clienteNome={cli.nome}/>}
+      {tab==="cenarios"  && <Simulador baseLans={cli.lans||[]} cens={cli.cens||[]} onUpdateCens={updCens} clienteNome={cli.nome} pjData={cli.pjData||{}}/>}
+      {tab==="auditoria" && <HistoricoAuditoria snapshots={cli.snapshots||[]} onNovoSnapshot={addSnap} lans={cli.lans||[]} pjData={cli.pjData||{}} consultor={cli._consultor||"Consultor"}/>}
+      {tab==="historico" && <div style={C}><div style={{fontSize:12,fontWeight:500,marginBottom:12}}>Histórico de interações</div>{!(cli.hist?.length)&&<div style={s0}>Nenhuma interação registrada.</div>}{(cli.hist||[]).map((h,i)=><div key={i} style={{display:"flex",gap:12,padding:"10px 0",borderBottom:"0.5px solid var(--br)"}}><div style={{width:64,flexShrink:0}}><div style={{fontSize:11,color:"var(--tx3)",marginBottom:4}}>{fmtD(h.data)}</div><span style={{fontSize:10,padding:"2px 6px",borderRadius:4,fontWeight:500,background:h.tipo==="apres"?"var(--bg-info)":"var(--bg2)",color:h.tipo==="apres"?"var(--tx-info)":"var(--tx2)"}}>{h.tipo==="apres"?"Apres.":"Análise"}</span></div><div style={{fontSize:13,color:"var(--tx2)",flex:1}}>{h.nota}</div></div>)}</div>}
+    </div>
+  );
+}
+
+/* ── NOVO CLIENTE ───────────────────────────── */
+function NovoCliente({cId,onSalvar,onCancel}){
+  const [f,setF]=useState({nome:"",cpf:"",rend:"",notas:""});
+  const fld=(k,v)=>setF(p=>({...p,[k]:v}));
+  function salvar(){if(!f.nome||!f.rend)return;onSalvar({id:"cli_"+Date.now(),cId,nome:f.nome,cpf:f.cpf||"***.***.***-00",status:"novo",rend:parseFloat(f.rend)||0,ultApres:null,proxFup:null,notaFup:"",pend:0,hist:[],notas:f.notas,cadastro:TODAY,lans:[],cens:[],snapshots:[],pjData:{}});}
+  return(
+    <div style={{padding:"24px 28px",flex:1,overflowY:"auto"}}>
+      <button onClick={onCancel} style={{fontSize:12,color:"var(--tx3)",border:"none",background:"none",cursor:"pointer",marginBottom:16,padding:0}}>← Cancelar</button>
+      <div style={{fontSize:17,fontWeight:500,marginBottom:20}}>Novo cliente</div>
+      <div style={{...C,maxWidth:560}}>
+        {[{l:"Nome completo *",k:"nome",ph:"João da Silva"},{l:"CPF (mascarado)",k:"cpf",ph:"***.***.***-00"},{l:"Rendimento estimado (R$) *",k:"rend",ph:"1200000",t:"number"},{l:"Notas iniciais",k:"notas",ph:"Observações..."}].map(fi=>(
+          <div key={fi.k} style={{marginBottom:14}}><label style={{fontSize:12,color:"var(--tx3)",display:"block",marginBottom:5}}>{fi.l}</label><input type={fi.t||"text"} value={f[fi.k]} onChange={e=>fld(fi.k,e.target.value)} placeholder={fi.ph} style={{...i0,width:"100%"}}/></div>
+        ))}
+        <button onClick={salvar} style={{padding:"8px 24px",borderRadius:8,fontSize:13,fontWeight:500,background:"var(--bg-info)",color:"var(--tx-info)",border:"0.5px solid var(--br-info)",cursor:"pointer"}}>Cadastrar cliente</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── LOGIN ──────────────────────────────────── */
+function Login({onLogin}){
+  const [em,setEm]=useState(""),[pw,setPw]=useState(""),[err,setErr]=useState("");
+  function go(){const u=CONS.find(c=>c.email===em&&c.senha===pw);u?onLogin(u):setErr("E-mail ou senha incorretos.");}
+  return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"
